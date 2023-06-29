@@ -16,7 +16,7 @@ This is the official implementation of the IAEAD framework presented by "Improve
 To obtain the results of IAEAD on MNIST with default settings, simply run the following command:
 
 ```bash
-python main.py --run_times=1 --gpu_id=0 --method=iae --dataset=mnist --ratio=0.1 --para_lambda=5e-5
+python main.py --run_times=1 --gpu_id=0 --method=RAE --dataset=mnist --ratio=0.1 --para_lambda=5e-5
 ```
 
 After training, to print UAD results for a specific algorithm in AUROC/AUPR, run:
@@ -26,7 +26,7 @@ After training, to print UAD results for a specific algorithm in AUROC/AUPR, run
 python evaluate_roc_auc.py --dataset cifar10 --algo_name iae-0.1
 
 # AUPR of IPAE on MNIST with outlier ratio 0.25 and inliers as the postive class
-python evaluate_pr_auc.py --dataset mnist --algo_name iae-0.1 --postive inliers
+python evaluate_pr_auc.py --dataset mnist --algo_name iae-0.1 --positive inliers
 ```
 
 ## Credit

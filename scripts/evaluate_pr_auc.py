@@ -2,14 +2,14 @@ import argparse
 import os
 import re
 import numpy as np
-from utils.utils import get_class_name_from_index
+import sys
+sys.path.insert(1, '/srv/Improved-Autoencoder/utils')
+from utils import get_class_name_from_index
 
 
 def get_filenames(algo_name, results_dir, dataset_name, class_name):
     """Returns all files satisfying the patterns."""
-    pattern = re.compile(r'{}_{}_{}_[0-9\-]+\.npz'.format(
-        dataset_name, algo_name, class_name
-    ))
+    pattern = re.compile(r'{}_{}_{}_[0-9\-]+\.npz'.format(dataset_name, algo_name, class_name))
     all_files = os.listdir(os.path.join(results_dir, dataset_name))
     selected = [f for f in all_files if pattern.match(f) is not None]
     return sorted([os.path.join(results_dir, dataset_name, f) for f in selected])
@@ -57,11 +57,12 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='cifar10')
     return parser.parse_args()
 
-
+import os
 if __name__ == "__main__":
     args = parse_args()
     n_classes = {
         'cifar10': 10, 'mnist': 10, 'cifar100': 20, 'fashion-mnist': 10, 'svhn': 10,
     }[args.dataset]
+    print(os.getcwd())
     compute_average_pr_auc(args.algo_name, args.results_dir, args.dataset,
                            n_classes, args.positive)

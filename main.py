@@ -36,12 +36,12 @@ from utils.utils import (save_roc_pr_curve_data,
                          time_string,
                          visualize_tsne_points,
                          denormalize_minus1_1)
-from utils.mailgun import send_mailgun
+#from utils.mailgun import send_mailgun
 
 matplotlib.use('Agg')
 cudnn.benchmark = True
 HOST = socket.gethostname()
-RESULTS_DIR = '/home/wogong/models/rae/_raw/' + datetime.now().strftime('%Y-%m-%d-%H%M%S') + '-' + HOST
+RESULTS_DIR = '/srv/Improved-Autoencoder/models/rae/_raw/' + datetime.now().strftime('%Y-%m-%d-%H%M%S') + '-' + HOST
 logger = SummaryWriter(RESULTS_DIR)
 
 
@@ -420,27 +420,33 @@ def cae(x_train, y_train, class_idx, restore, args):
 
 def iae(x_train, y_train, class_idx, restore, args):
     """ l2loss
-    :param x_train:
-    :param y_train:
-    :param class_idx:
-    :param restore:
-    :param args:
+    :param x_train: (normal data, anomaly data)
+    :param y_train: (0,0,0,0,0,0, 1,1,1,1,1,1,1)
+    :param class_idx: index of the class to train
+    :param restore: NONE ??
+    :param args: argumentos entrada programa
     :return:
     """
+    #Check if cuda gpu available
     device = torch.device("cuda:" + args.gpu_id if torch.cuda.is_available() else "cpu")
+    #Create object tensor with transformation ToTensor, 
+    # which transform train/test png images to tensor (32 bits float normalized between [0, 1])
     transform_train = transforms.Compose([transforms.ToTensor(), ])
     transform_test = transforms.Compose([transforms.ToTensor(), ])
+
+    #Use data augmentation ??
     if args.dataset == 'mnist' or args.dataset == 'fashion-mnist':
         print("Not using data augmentation")
     elif args.augmentation == 1:
         print("Using data augmentation")
+        #Recreate tensor object with transformations (crop, horizontalflip and toTensor)
         transform_train = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(), ])
 
-    n_channels = x_train.shape[get_channels_axis()]
-
+    n_channels = x_train.shape[get_channels_axis()] #Return 1 or 3 (weird function infer always return 1)
+    ################## TO BE CONTINUED ##################
     class_name = get_class_name_from_index(class_idx, args.dataset)
 
     model = CAE(in_channels=n_channels)
@@ -555,9 +561,12 @@ def main():
                 class_idx = args.normal_class
             for ratio in ratio_list:
                 args.ratio = ratio
+                #Get the class name from dataset (cifar10 example: cat, dog, deer)
                 class_name = get_class_name_from_index(class_idx, args.dataset)
                 np.random.seed(run_idx)
-                x_train, y_train = data_load_fn(class_idx, ratio)
+                #Get train data of dataset with anomalies
+                #IMPORTANT: the function return the train_data ordered first normal then (ratio of) anomalies
+                x_train, y_train = data_load_fn(class_idx, ratio) #y_train = 0 -> anomaly / 1 -> normal
 
                 # random sampling if the number of data is too large
                 if x_train.shape[0] > max_sample_num:
@@ -565,7 +574,7 @@ def main():
                     x_train = x_train[selected, :]
                     y_train = y_train[selected]
                 print('current training dataset: {}, normal class: {}, ratio: {}.'.format(dataset_name, class_name, ratio))
-                method(x_train, y_train, class_idx, None, args)
+                method(x_train, y_train, class_idx, None, args) #calls iae or cae functions
             if args.normal_class == -1:
                 pass
             else:
@@ -574,4 +583,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    send_mailgun()
+    #send_mailgun()

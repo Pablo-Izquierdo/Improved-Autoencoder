@@ -8,20 +8,32 @@ from keras.backend import cast_to_floatx
 
 
 def _load_data_with_outliers(normal, abnormal, p):
-    num_abnormal = int(normal.shape[0]*p/(1-p))
+    #Get number of anomaly images. We don´t use all the images that
+    # not beyond to the actual computing class of dataset as anomalies. 
+    # (else more anomalies that normal data)
+    num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
+    #Get anomalies images randomly
     selected = np.random.choice(abnormal.shape[0], num_abnormal, replace=False)
+
+    #Concatenate normal data with anomalies
     data = np.concatenate((normal, abnormal[selected]), axis=0)
+    #Set labels to data 0 -> anomaly / 1 -> normal 
     labels = np.zeros((data.shape[0], ), dtype=np.int32)
     labels[:len(normal)] = 1
-    return data, labels
+    return data, labels #It is ordered (normal, anomalies)
 
 
 def _load_data_one_vs_all(data_load_fn, class_ind, p):
-    (x_train, y_train), (x_test, y_test) = data_load_fn()
+    (x_train, y_train), (x_test, y_test) = data_load_fn() #Contains (X_train, y_train), (X_test, y_test) from specific dataset
+
+    #Concatenate X= [[train],[test]] and Y= [[train],[test]]
     X = np.concatenate((x_train, x_test), axis=0)
     Y = np.concatenate((y_train, y_test), axis=0)
-    normal = X[Y.flatten() == class_ind]
+
+    #Get elements of Y that correspond to class index we wanted and the opposite
+    normal = X[Y.flatten() == class_ind] # Flatten: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html
     abnormal = X[Y.flatten() != class_ind]
+
     return _load_data_with_outliers(normal, abnormal, p)
 
 
@@ -102,12 +114,13 @@ def load_svhn(data_dir='/home/wogong/datasets/svhn/'):
 
 def get_channels_axis():
     import keras
+    #Returns the default image data format convention. 
+    # A string, either 'channels_first' or 'channels_last'
     idf = keras.backend.image_data_format()
     if idf == 'channels_first':
         return 1
-    assert idf == 'channels_last'
+    assert idf == 'channels_last' #Raise AssertionError if idf != channels_last ¡NOT MAKE SENSE!
     return 3
-
 
 def normalize_minus1_1(data):
     return 2*(data/255.) - 1

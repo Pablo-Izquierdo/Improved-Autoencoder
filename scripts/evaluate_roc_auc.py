@@ -2,7 +2,9 @@ import argparse
 import os
 import re
 import numpy as np
-from utils.utils import get_class_name_from_index
+import sys
+sys.path.insert(1, '/srv/Improved-Autoencoder/utils')
+from utils import get_class_name_from_index
 
 
 def get_filenames(algo_name, results_dir, dataset_name, class_name):
