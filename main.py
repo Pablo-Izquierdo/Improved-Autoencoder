@@ -178,39 +178,48 @@ def train_cae(trainloader, model, class_name, testloader, y_train, device, args)
 def train_iae(trainloader, model, class_name, testloader, y_train, device, args):
     """
     model train function.
-    :param trainloader:
-    :param model:
-    :param class_name:
-    :param testloader:
+    :param trainloader: pytorch dataLoader with train images
+    :param model: our model
+    :param class_name: name of the class to train
+    :param testloader: pytorch dataLoader with test images
     :param y_train: numpy array, sample normal/abnormal labels, [1 1 1 1 0 0] like, original sample size.
     :param device: cpu or gpu:0/1/...
-    :param args:
+    :param args: argumentos entrada programa
     :return:
     """
+    # initialize parameters
     global_step = 0
-    losses = AverageMeter()
+    losses = AverageMeter() #utils/misc.py return object with val, avg, sum, count
     l2_losses = AverageMeter()
     svdd_losses = AverageMeter()
 
-    start_time = time.time()
-    epoch_time = AverageMeter()
+    start_time = time.time() # get initial time
+    epoch_time = AverageMeter() #utils/misc.py return object with val, avg, sum, count
 
-    svdd_loss = torch.tensor(0, device=device)
-    R = torch.tensor(0, device=device)
-    c = torch.randn(256, device=device)
+    svdd_loss = torch.tensor(0, device=device) #initialize tensor object with 0 int at GPU
+    # I infer this is ratio and center
+    R = torch.tensor(0, device=device)  #initialize tensor object with 0 int at GPU
+    c = torch.randn(256, device=device)  #initialize tensor object with 256 int at GPU
 
     for epoch in range(1, args.epochs + 1):
+        # switch to train mode
         model.train()
 
-        need_hour, need_mins, need_secs = convert_secs2time(epoch_time.avg * (args.epochs - epoch))
-        need_time = '[Need: {:02d}:{:02d}:{:02d}]'.format(need_hour, need_mins, need_secs)
-        print('{:3d}/{:3d} ----- {:s} {:s}'.format(epoch, args.epochs, time_string(), need_time))
+        #Get de hours, mins, and seconds predicted for training
+        need_hour, need_mins, need_secs = convert_secs2time(epoch_time.avg * (args.epochs - epoch))  
+        need_time = '[Need: {:02d}:{:02d}:{:02d}]'.format(need_hour, need_mins, need_secs) #string
+        print('{:3d}/{:3d} ----- {:s} {:s}'.format(epoch, args.epochs, time_string(), need_time)) #string
 
-        mse = nn.MSELoss(reduction='mean') # default
+        # Creates a criterion that measures the mean squared error (squared L2 norm)
+        #  between each element in the input x and target y.
+        #   Specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'. 'none'
+        mse = nn.MSELoss(reduction='mean') # default 
 
-        lr = 0.1 / pow(2, np.floor(epoch / args.lr_schedule))
+        # learning rate schedule parameter, default 50
+        lr = 0.1 / pow(2, np.floor(epoch / args.lr_schedule)) # 0.1 / 2^(epoch/50)
         logger.add_scalar(class_name + "/lr", lr, epoch)
 
+        # Construct optimizer object
         if args.optimizer == 'sgd':
             optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=args.weight_decay)
         elif args.optimizer == 'adam':
@@ -218,34 +227,42 @@ def train_iae(trainloader, model, class_name, testloader, y_train, device, args)
         else:
             print ('not implemented.')
 
-        for batch_idx, (input, _, _) in enumerate(trainloader):
-            optimizer.zero_grad()
-            input = input.to(device)
+        for batch_idx, (input, _, _) in enumerate(trainloader): # For each image
 
-            reps, output = model(input)
+            optimizer.zero_grad() # Sets the gradients of all optimized to zero
+            input = input.to(device) # Send img to device
 
-            if epoch > args.pretrain_epochs:
-                dist = torch.sum((reps - c) ** 2, dim=1)
-                scores = dist - R ** 2
+            reps, output = model(input)  # reps = data obtain from encoder
+                                         # output = data obtein from decoder
+
+            if epoch > args.pretrain_epochs: # How many pretrain steps before add svdd loss = default 20
+                dist = torch.sum((reps - c) ** 2, dim=1) #distance
+                scores = dist - R ** 2 #Calculate score
+                # para_lambda: deep svdd parameter = default 5e-5
+                # 5e-5 * ( Ratio^2 + (1/0.1) * mean(max([0,0,0...scores.size], scores)))
+                # torch.max:  Returns the maximum value of all elements in the input tensor.
                 svdd_loss = args.para_lambda * (R ** 2 + (1 / args.para_nu) * torch.mean(torch.max(torch.zeros_like(scores), scores)))
 
-            l2_loss = mse(input, output)
+            # Calculate Loss of input
+            l2_loss = mse(input, output) # get mse
+            loss = l2_loss + svdd_loss # Calculate total loss
 
-            loss = l2_loss + svdd_loss
-
+            # Update losses parameters
             l2_losses.update(l2_loss.item(), 1)
             svdd_losses.update(svdd_loss.item(), 1)
             losses.update(loss.item(), 1)
 
+            # Logger losses values
             logger.add_scalar(class_name + '/l2_loss', l2_losses.avg, global_step)
             logger.add_scalar(class_name + '/svdd_loss', svdd_losses.avg, global_step)
             logger.add_scalar(class_name + '/loss', losses.avg, global_step)
-
             logger.add_scalar(class_name + '/R', R.data, global_step)
-
+            # Update step = next_step
             global_step = global_step + 1
-            loss.backward()
-            optimizer.step()
+
+            loss.backward() # Computes the gradient of current tensor 
+                            # You might need to execute zero_grad afte to not accumulates gradients
+            optimizer.step() # Update new weights
 
             # Update hypersphere radius R on mini-batch distances
             if epoch > args.pretrain_epochs:
@@ -255,25 +272,34 @@ def train_iae(trainloader, model, class_name, testloader, y_train, device, args)
         print('Epoch: [{} | {}], loss: {:.4f}'.format(epoch, args.epochs, losses.avg))
 
         # log images
+        # log_img_steps = default 1000
+        # only when epoch = 1000 o multiplo
         if epoch % args.log_img_steps == 0:
             os.makedirs(os.path.join(RESULTS_DIR, class_name), exist_ok=True)
             fpath = os.path.join(RESULTS_DIR, class_name, 'pretrain_epoch_' + str(epoch) + '.png')
             visualize(input, output, fpath, num=32)
 
         # test while training
+        # log_auc_steps = default 5
+        # each 5 epochs execute test prediction
         if epoch % args.log_auc_steps == 0:
-            rep, losses_result = test(testloader, model, class_name, args, device, epoch)
-
+            # Obtain reps and losses.numpy() of the test images
+            rep, losses_result = test(testloader, model, class_name, args, device, epoch) # main.py/test
+            
+            #Get centroid = mean rep by row
             centroid = torch.mean(rep, dim=0, keepdim=True)
 
+            # AUROC based on reconstruction losses
             losses_result = losses_result - losses_result.min()
             losses_result = losses_result / (1e-8 + losses_result.max())
-            scores = 1 - losses_result
+            scores = 1 - losses_result # normal: label=1, score near 1, loss near 0
+            #Compute Area Under the ROC curve from predictions scores
             auroc_rec = roc_auc_score(y_train, scores)
 
+            # DEC based on reconstruction losses with centroid and representation
             _, p = dec_loss_fun(rep, centroid)
             score_p = p[:, 0]
-            auroc_dec = roc_auc_score(y_train, score_p)
+            auroc_dec = roc_auc_score(y_train, score_p) # calculate ROC
 
             print ("Epoch: [{} | {}], auroc_rec: {:.4f}; auroc_dec: {:.4f}".format(epoch, args.epochs, auroc_rec, auroc_dec))
 
@@ -281,26 +307,31 @@ def train_iae(trainloader, model, class_name, testloader, y_train, device, args)
             logger.add_scalar(class_name + '/auroc_dec', auroc_dec, epoch)
 
         # initial centroid c before pretrain finished
+        # epoch == 20
         if epoch == args.pretrain_epochs:
             rep, losses_result = test(testloader, model, class_name, args, device, epoch)
+            #Initialize hypersphere center c as the mean from an initial forward pass on the data.
             c = update_center_c(rep)
 
-        # time
+        # Update time
         epoch_time.update(time.time() - start_time)
         start_time = time.time()
 
 
 def test(testloader, model, class_name, args, device, epoch):
-    model.eval()
+    model.eval() # shitch evaluation mode
     losses = []
     reps = []
-    for batch_idx, (input, labels, id) in enumerate(testloader):
-        with torch.no_grad():
-            input = input.to(device)
+    for batch_idx, (input, labels, id) in enumerate(testloader): # For each image
+        #Disabling gradient calculation is useful for inference,
+        #  when you are sure that you will not call Tensor.backward()
+        with torch.no_grad():  # Disabling gradient calculation
+            input = input.to(device) # send image to device
 
-            rep, output = model(input)
+            rep, output = model(input) # compute prediction
 
-            # L1 loss
+            # L1 loss 
+            # NO COMPRENDO BIEN
             l1loss = output.sub(input).abs().view(output.size(0), -1)
             l1loss = l1loss.sum(dim=1, keepdim=False)
 
@@ -331,8 +362,9 @@ def test(testloader, model, class_name, args, device, epoch):
     #     plt.savefig(os.path.join(MODEL_DIR, class_name,
     #                              'test_epoch_' + str(epoch) + '_batch_' + str(batch_idx) + '.png'))
 
-    losses = torch.cat(losses, dim=0)
-    reps = torch.cat(reps, dim=0)
+    # A bit wierd funtion usually is like torch.cat((x, x, x), 0)
+    losses = torch.cat(losses, dim=0) # concatenate losses on rows
+    reps = torch.cat(reps, dim=0) # concatenate rep on rows
     return reps, losses.numpy()
 
 
@@ -423,7 +455,7 @@ def iae(x_train, y_train, class_idx, restore, args):
     :param x_train: (normal data, anomaly data)
     :param y_train: (0,0,0,0,0,0, 1,1,1,1,1,1,1)
     :param class_idx: index of the class to train
-    :param restore: NONE ??
+    :param restore: NONE by default
     :param args: argumentos entrada programa
     :return:
     """
@@ -445,29 +477,33 @@ def iae(x_train, y_train, class_idx, restore, args):
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(), ])
 
-    n_channels = x_train.shape[get_channels_axis()] #Return 1 or 3 (weird function infer always return 1)
-    ################## TO BE CONTINUED ##################
+    n_channels = x_train.shape[get_channels_axis()] #Return 1 or 3 (weird function I infer always return 1)
+    #Get the class name from dataset (cifar10 example: cat, dog, deer)
     class_name = get_class_name_from_index(class_idx, args.dataset)
-
-    model = CAE(in_channels=n_channels)
-
+    #Gernerate de autoencoder model and load into the GPU
+    model = CAE(in_channels=n_channels) #models/rae.py
     model = model.to(device)
-    init_weights(model, init_type='xavier', init_gain=0.02)
+    #initialize model weights
+    init_weights(model, init_type='xavier', init_gain=0.02) # utils/init_weights.py
 
+    #Create own object trainset and testset
     trainset = trainset_pytorch(train_data=x_train,
                                 train_labels=y_train,
-                                transform=transform_train)
+                                transform=transform_train) # dataset/dataset.py
     testset = trainset_pytorch(train_data=x_train,
                                train_labels=y_train,
-                               transform=transform_test)
-
+                               transform=transform_test) # dataset/dataset.py
+    # DataLocader Function
+    # The Dataset retrieves our dataset’s features and labels one sample at a time,
+    #  reshuffle the data at every epoch to reduce model overfitting,
+    #   and use Python’s multiprocessing to speed up data retrieval
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, drop_last=True)
     testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False)
 
     # training
     if not restore:
-        train_iae(trainloader, model, class_name, testloader, y_train, device, args)
-        if args.save_model == 1:
+        train_iae(trainloader, model, class_name, testloader, y_train, device, args) # main.py/train_iae
+        if args.save_model == 1: #save model
             model_file_name = '{}_iae-{}_{}.model.npz'.format(args.dataset, args.ratio, class_name)
             model_path = os.path.join(RESULTS_DIR, args.dataset)
             save_model(model, model_path, model_file_name)
@@ -476,7 +512,7 @@ def iae(x_train, y_train, class_idx, restore, args):
         model.load_state_dict(torch.load(restore))
 
     # testing
-    reps, losses = test(testloader, model, class_name, args, device, epoch=-1)
+    reps, losses = test(testloader, model, class_name, args, device, epoch=-1) # main.py/test
 
     # AUROC based on reconstruction losses
     losses = losses - losses.min()
@@ -486,10 +522,11 @@ def iae(x_train, y_train, class_idx, restore, args):
     res_file_name = '{}_iae_rec-{}_{}_{}.npz'.format(args.dataset, args.ratio, class_name, datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, args.dataset, res_file_name)
     os.makedirs(os.path.join(RESULTS_DIR, args.dataset), exist_ok=True)
-    auc_roc_rec = roc_auc_score(y_train, scores)
+    auc_roc_rec = roc_auc_score(y_train, scores) # AUC ROC
     print('testing result: auc_rec: {:.4f}'.format(auc_roc_rec))
     save_roc_pr_curve_data(scores, y_train, res_file_path)
 
+    # TODO: NO ENTIENDO, QUE ES DEC ?
     # DEC based on reconstruction losses
     centroid = torch.mean(reps, dim=0, keepdim=True)
     _, p = dec_loss_fun(reps, centroid)
@@ -498,7 +535,7 @@ def iae(x_train, y_train, class_idx, restore, args):
     res_file_name = '{}_iae_dec-{}_{}_{}.npz'.format(args.dataset, args.ratio, class_name, datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, args.dataset, res_file_name)
     os.makedirs(os.path.join(RESULTS_DIR, args.dataset), exist_ok=True)
-    auc_roc_dec = roc_auc_score(y_train, score_p)
+    auc_roc_dec = roc_auc_score(y_train, score_p) #AUC ROC DEC?
     print('testing result: auc_dec: {:.4f}'.format(auc_roc_dec))
     save_roc_pr_curve_data(score_p, y_train, res_file_path)
 
