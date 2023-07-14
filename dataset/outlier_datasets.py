@@ -5,6 +5,7 @@ import torch.utils.data
 from keras.datasets import mnist, fashion_mnist, cifar100, cifar10
 from torchvision.datasets import SVHN
 from keras.backend import cast_to_floatx
+import dataset.wine_dataset as wine
 
 
 def _load_data_with_outliers(normal, abnormal, p):
@@ -55,6 +56,8 @@ def load_cifar10_with_outliers(class_ind, p):
 def load_cifar100_with_outliers(class_ind, p):
     return _load_data_one_vs_all(load_cifar100, class_ind, p)
 
+def load_wine_with_outliers(class_ind, p):
+    return _load_data_one_vs_all(load_wine, class_ind, p)
 
 def load_mnist_with_outliers(class_ind, p):
     return _load_data_one_vs_all(load_mnist, class_ind, p)
@@ -99,6 +102,11 @@ def load_cifar100(label_mode='coarse'):
     X_test = normalize_minus1_1(cast_to_floatx(X_test))
     return (X_train, y_train), (X_test, y_test)
 
+def load_wine(splits_dir='/srv/Improved-Autoencoder/dataset/data_files/'):
+    (X_train, y_train), (X_test, y_test) = wine.load_data(splits_dir=splits_dir)
+    X_train = normalize_minus1_1(cast_to_floatx(X_train))
+    X_test = normalize_minus1_1(cast_to_floatx(X_test))
+    return (X_train, y_train), (X_test, y_test)
 
 def load_svhn(data_dir='/home/wogong/datasets/svhn/'):
     img_train_data = SVHN(root=data_dir, split='train', download=True)

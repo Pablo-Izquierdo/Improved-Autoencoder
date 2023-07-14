@@ -24,6 +24,7 @@ from dataset.outlier_datasets import (load_cifar10_with_outliers,
                                       load_fashion_mnist_with_outliers,
                                       load_mnist_with_outliers,
                                       load_svhn_with_outliers,
+                                      load_wine_with_outliers,
                                       get_channels_axis,
                                       )
 from dataset.dataset import trainset_pytorch, trainset_rat
@@ -570,7 +571,8 @@ def main():
         'fashion-mnist': (load_fashion_mnist_with_outliers, 'fashion-mnist', 10),
         'cifar10': (load_cifar10_with_outliers, 'cifar10', 10),
         'cifar100': (load_cifar100_with_outliers, 'cifar100', 20),
-        'svhn': (load_svhn_with_outliers, 'svhn', 10)
+        'svhn': (load_svhn_with_outliers, 'svhn', 10),
+        'wine': (load_wine_with_outliers, 'wine', 2)
     }
     method_dict = {
         'RAE': iae,

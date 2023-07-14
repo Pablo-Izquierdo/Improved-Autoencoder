@@ -24,11 +24,13 @@ After training, to print UAD results for a specific algorithm in AUROC/AUPR, run
 ```bash
 # AUROC of IPAE on CIFAR10 with outlier ratio 0.1
 python evaluate_roc_auc.py --dataset cifar10 --algo_name iae-0.1
+python ./scripts/evaluate_roc_auc.py --dataset mnist --algo_name iae_dec-0.1 --results_dir /path/to/result/directory
 
 # AUPR of IPAE on MNIST with outlier ratio 0.25 and inliers as the postive class
 python evaluate_pr_auc.py --dataset mnist --algo_name iae-0.1 --positive inliers
 ```
 
+The result could have 0 as std, due to the fact that it has only ejecuted 1 time (--run_times=1)
 ## Credit
 
 - https://github.com/demonzyj56/E3Outlier
