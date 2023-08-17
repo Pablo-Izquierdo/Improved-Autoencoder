@@ -11,9 +11,18 @@ from skimage import io
 from collections import Counter
 import random as r
 
+DATASET_DIR_PATH = "/storage/"
+NORMAL_DATA_DIR_NAME = "normal_all"
+
 FILES_DIRECTORY = '../dataset/data_files/'
 pwd = os.getcwd()
 print(pwd)
+
+try:
+    os.mkdir(FILES_DIRECTORY)
+except:
+    print("directory already exists")
+    
 # funcion que genera el chisero dataset.txt con las carpetas de imagenes y un dataframe con path y bin_size
 def generate_dataset_file(imageDirectory):
 
@@ -25,7 +34,7 @@ def generate_dataset_file(imageDirectory):
             img_class_Directory = imageDirectory + img_class + "/"
             #print(img_class_Directory)
 
-            if img_class == 'normal': # normal = 1 / abnormal = 0
+            if img_class == NORMAL_DATA_DIR_NAME: # normal = 1 / abnormal = 0
                 type = 1
             else:
                 type = 0
@@ -79,4 +88,4 @@ def gen_data(images_dir):
     #Test
     write_file('test.txt', X_test, y_test)
     
-gen_data('/srv/wine_dataset/')
+gen_data(DATASET_DIR_PATH)
