@@ -488,6 +488,7 @@ def iae(x_train, y_train, class_idx, restore, args):
     init_weights(model, init_type='xavier', init_gain=0.02) # utils/init_weights.py
 
     #Create own object trainset and testset
+    # TODO: !! UTILIZA MISMOS DATOS TRAIN TEST...?¿
     trainset = trainset_pytorch(train_data=x_train,
                                 train_labels=y_train,
                                 transform=transform_train) # dataset/dataset.py
@@ -561,8 +562,8 @@ def main():
     parser.add_argument('--optimizer', type=str, default='sgd', help='SGD or ADAM (eps=1e-7, weight_decay=0.0005).')
     parser.add_argument('--weight_decay', type=float, default=0, help='weight decay (L2 penalty), default 0')
     parser.add_argument('--lr_schedule', type=float, default=50, help='learning rate schedule parameter.')
-    parser.add_argument('--para_nu', type=float, default=0.1, help='deep svdd parameter.')
-    parser.add_argument('--para_lambda', type=float, default=5e-5, help='deep svdd parameter.')
+    parser.add_argument('--para_nu', type=float, default=0.1, help='deep svdd soft-boundary v parameter.')
+    parser.add_argument('--para_lambda', type=float, default=5e-5, help='deep svdd loss parameter regulator.')
 
     args = parser.parse_args()
 

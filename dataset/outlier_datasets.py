@@ -20,7 +20,7 @@ def _load_data_with_outliers(normal, abnormal, p):
     data = np.concatenate((normal, abnormal[selected]), axis=0)
     #Set labels to data 0 -> anomaly / 1 -> normal 
     labels = np.zeros((data.shape[0], ), dtype=np.int32)
-    labels[:len(normal)] = 1
+    labels[:len(normal)] = 1 # From element 0 to len(normal)-1 set to 1
     return data, labels #It is ordered (normal, anomalies)
 
 
@@ -34,6 +34,8 @@ def _load_data_one_vs_all(data_load_fn, class_ind, p):
     #Get elements of Y that correspond to class index we wanted and the opposite
     normal = X[Y.flatten() == class_ind] # Flatten: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html
     abnormal = X[Y.flatten() != class_ind]
+
+    #NOW normal/abnormal have test and train images mixed #TODO: WTF??
 
     return _load_data_with_outliers(normal, abnormal, p)
 

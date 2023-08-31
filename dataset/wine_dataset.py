@@ -50,7 +50,7 @@ def load_data_splits(splits_dir, im_dir='/', split_name='train'):
 
     return X, y
 
-def load_image(filename, im_size=224, filemode='local'):
+def load_image(filename, im_size=32, filemode='local'):
     """
     Function to load a local image path (or an url) into a numpy array.
 
