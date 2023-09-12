@@ -12,7 +12,8 @@ def _load_data_with_outliers(normal, abnormal, p):
     #Get number of anomaly images. We don´t use all the images that
     # not beyond to the actual computing class of dataset as anomalies. 
     # (else more anomalies that normal data)
-    num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
+    #num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
+    num_abnormal = int(normal.shape[0])
     #Get anomalies images randomly
     selected = np.random.choice(abnormal.shape[0], num_abnormal, replace=False)
 

@@ -146,9 +146,9 @@ def gen_data(images_dir, num_abnormal):
     print("Train:", Counter(y_train))
     print("Test:",Counter(y_test))
     #Train
-    write_file('train.txt', X_train, y_train)
+    write_file('train.txt', pd.concat([X_train, df_train['path']]), pd.concat([y_train, df_train['clase']]))
     #Test
-    write_file('test.txt', X_test, y_test)
+    write_file('test.txt', pd.concat([X_test,df_test['path']]), pd.concat([y_test,df_test['clase']]))
     
     
 gen_data(DATASET_DIR_PATH, 10000)
