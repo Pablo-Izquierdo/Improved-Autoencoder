@@ -27,7 +27,7 @@ pwd = os.getcwd()
 print(pwd)
 
 try:
-    os.mkdir(FILES_DIRECTORY)
+    os.mkdir(RESULT_FILES_DIRECTORY)
 except:
     print("directory already exists")
 
@@ -151,4 +151,4 @@ def gen_data(images_dir, num_abnormal):
     write_file('test.txt', pd.concat([X_test,df_test['path']]), pd.concat([y_test,df_test['clase']]))
     
     
-gen_data(DATASET_DIR_PATH, 10000)
+gen_data(DATASET_DIR_PATH, 5582)

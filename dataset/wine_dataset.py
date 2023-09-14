@@ -66,7 +66,6 @@ def load_image(filename, im_size=32, filemode='local'):
     -------
     A numpy array
     """
-    filename = filename.replace(' ','')
     if filemode == 'local':
         image = cv2.imread(filename, cv2.IMREAD_COLOR)
         if image is None:
