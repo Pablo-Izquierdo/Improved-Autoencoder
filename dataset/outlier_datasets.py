@@ -24,6 +24,64 @@ def _load_data_with_outliers(normal, abnormal, p):
     labels[:len(normal)] = 1 # From element 0 to len(normal)-1 set to 1
     return data, labels #It is ordered (normal, anomalies)
 
+def _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, abnormal_test, p):
+    #Get number of anomaly images. We don´t use all the images that
+    # not beyond to the actual computing class of dataset as anomalies. 
+    # (else more anomalies that normal data)
+    #num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
+    print(type(normal_train))
+    num_abnormal_train = int(normal_train.shape[0])
+    num_abnormal_test = int(normal_test.shape[0])
+
+    #Get anomalies images randomly
+    selected_train = np.random.choice(abnormal.shape[0], num_abnormal_train, replace=False)
+    selected_test = np.random.choice(abnormal.shape[0], num_abnormal_test, replace=False)
+
+    #Concatenate normal data with anomalies
+    x_train = np.concatenate((normal_train, abnormal_train[selected_train]), axis=0)
+    x_test = np.concatenate((normal_test, abnormal_test[selected_test]), axis=0)
+    print(type(x_train))
+    #Set labels to data 0 -> anomaly / 1 -> normal 
+    y_train = np.zeros((x_train.shape[0], ), dtype=np.int32)
+    y_train[:len(normal_train)] = 1 # From element 0 to len(normal)-1 set to 1
+    y_test = np.zeros((x_test.shape[0], ), dtype=np.int32)
+    y_test[:len(normal_test)] = 1  # From element 0 to len(normal)-1 set to 1
+    #It is ordered (normal, anomalies)
+
+    #Shuffle x_train and y_train
+    temp = list(zip(x_train, y_train))
+    ramdom.shuffle(temp)
+    x_train, y_train = zip(*temp)
+    x_train = np.array(x_train)
+    y_train = np.array(y_train)
+
+    #Shuffle x_test and y_test
+    temp = list(zip(x_test, y_test))
+    ramdom.shuffle(temp)
+    x_test, y_test = zip(*temp)
+    x_test = np.array(x_test)
+    y_test = np.array(y_test)
+
+
+    return x_train, y_train, x_test, y_test
+
+def _load_data_one_vs_all_fixed(data_load_fn, class_ind, p):
+    (x_train, y_train), (x_test, y_test) = data_load_fn() #Contains (X_train, y_train), (X_test, y_test) from specific dataset
+
+    #Concatenate X= [[train],[test]] and Y= [[train],[test]]
+    #X = np.concatenate((x_train, x_test), axis=0)
+    #Y = np.concatenate((y_train, y_test), axis=0)
+
+    #Get elements of Y that correspond to class index we wanted and the opposite
+    normal_train = x_train[y_train.flatten() == class_ind] # Flatten: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html
+    abnormal_train = x_train[y_train.flatten() != class_ind]
+
+    normal_test = x_test[y_test.flatten() == class_ind] # Flatten: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html
+    abnormal_test = x_test[y_test.flatten() != class_ind]
+
+    #NOW normal/abnormal have test and train images mixed #TODO: WTF??
+
+    return _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, abnormal_test, p)
 
 def _load_data_one_vs_all(data_load_fn, class_ind, p):
     (x_train, y_train), (x_test, y_test) = data_load_fn() #Contains (X_train, y_train), (X_test, y_test) from specific dataset

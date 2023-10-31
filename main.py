@@ -451,7 +451,7 @@ def cae(x_train, y_train, class_idx, restore, args):
     save_roc_pr_curve_data(score_p, y_train, res_file_path)
 
 
-def iae(x_train, y_train, class_idx, restore, args):
+def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     """ l2loss
     :param x_train: (normal data, anomaly data)
     :param y_train: (0,0,0,0,0,0, 1,1,1,1,1,1,1)
@@ -492,8 +492,8 @@ def iae(x_train, y_train, class_idx, restore, args):
     trainset = trainset_pytorch(train_data=x_train,
                                 train_labels=y_train,
                                 transform=transform_train) # dataset/dataset.py
-    testset = trainset_pytorch(train_data=x_train,
-                               train_labels=y_train,
+    testset = trainset_pytorch(train_data=x_test,
+                               train_labels=y_test,
                                transform=transform_test) # dataset/dataset.py
     # DataLocader Function
     # The Dataset retrieves our dataset’s features and labels one sample at a time,
@@ -606,7 +606,7 @@ def main():
                 np.random.seed(run_idx)
                 #Get train data of dataset with anomalies
                 #IMPORTANT: the function return the train_data ordered first normal then (ratio of) anomalies
-                x_train, y_train = data_load_fn(class_idx, ratio) #y_train = 0 -> anomaly / 1 -> normal
+                x_train, y_train, x_test, y_test = data_load_fn(class_idx, ratio) #y_train = 0 -> anomaly / 1 -> normal
 
                 # random sampling if the number of data is too large
                 if x_train.shape[0] > max_sample_num:
@@ -614,7 +614,7 @@ def main():
                     x_train = x_train[selected, :]
                     y_train = y_train[selected]
                 print('current training dataset: {}, normal class: {}, ratio: {}.'.format(dataset_name, class_name, ratio))
-                method(x_train, y_train, class_idx, None, args) #calls iae or cae functions
+                method(x_train, y_train, x_test, y_test, class_idx, None, args) #calls iae or cae functions
             if args.normal_class == -1:
                 pass
             else:
