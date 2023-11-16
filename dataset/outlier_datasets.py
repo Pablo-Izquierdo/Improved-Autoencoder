@@ -6,7 +6,7 @@ from keras.datasets import mnist, fashion_mnist, cifar100, cifar10
 from torchvision.datasets import SVHN
 from keras.backend import cast_to_floatx
 import dataset.wine_dataset as wine
-
+import random
 
 def _load_data_with_outliers(normal, abnormal, p):
     #Get number of anomaly images. We don´t use all the images that
@@ -34,8 +34,8 @@ def _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, ab
     num_abnormal_test = int(normal_test.shape[0])
 
     #Get anomalies images randomly
-    selected_train = np.random.choice(abnormal.shape[0], num_abnormal_train, replace=False)
-    selected_test = np.random.choice(abnormal.shape[0], num_abnormal_test, replace=False)
+    selected_train = np.random.choice(abnormal_train.shape[0], num_abnormal_train, replace=True)
+    selected_test = np.random.choice(abnormal_test.shape[0], num_abnormal_test, replace=True)
 
     #Concatenate normal data with anomalies
     x_train = np.concatenate((normal_train, abnormal_train[selected_train]), axis=0)
@@ -50,14 +50,14 @@ def _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, ab
 
     #Shuffle x_train and y_train
     temp = list(zip(x_train, y_train))
-    ramdom.shuffle(temp)
+    random.shuffle(temp)
     x_train, y_train = zip(*temp)
     x_train = np.array(x_train)
     y_train = np.array(y_train)
 
     #Shuffle x_test and y_test
     temp = list(zip(x_test, y_test))
-    ramdom.shuffle(temp)
+    random.shuffle(temp)
     x_test, y_test = zip(*temp)
     x_test = np.array(x_test)
     y_test = np.array(y_test)
@@ -118,7 +118,7 @@ def load_cifar100_with_outliers(class_ind, p):
     return _load_data_one_vs_all(load_cifar100, class_ind, p)
 
 def load_wine_with_outliers(class_ind, p):
-    return _load_data_one_vs_all(load_wine, class_ind, p)
+    return _load_data_one_vs_all_fixed(load_wine, class_ind, p)
 
 def load_mnist_with_outliers(class_ind, p):
     return _load_data_one_vs_all(load_mnist, class_ind, p)

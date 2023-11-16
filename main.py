@@ -295,6 +295,7 @@ def train_iae(trainloader, model, class_name, testloader, y_train, device, args)
             losses_result = losses_result / (1e-8 + losses_result.max())
             scores = 1 - losses_result # normal: label=1, score near 1, loss near 0
             #Compute Area Under the ROC curve from predictions scores
+            print(y_train.shape, scores.shape)
             auroc_rec = roc_auc_score(y_train, scores)
 
             # DEC based on reconstruction losses with centroid and representation
