@@ -95,14 +95,14 @@ def update_center_c(reps, eps=0.1):
 #########################
 # train and test
 #########################
-def train_cae(trainloader, model, class_name, testloader, y_train, device, args):
+def train_cae(trainloader, model, class_name, testloader, y_test, device, args):
     """
     model train function.
     :param trainloader:
     :param model:
     :param class_name:
     :param testloader:
-    :param y_train: numpy array, sample normal/abnormal labels, [1 1 1 1 0 0] like, original sample size.
+    :param y_test: numpy array, sample normal/abnormal labels, [1 1 1 1 0 0] like, original sample size.
     :param device: cpu or gpu:0/1/...
     :param args:
     :return:
@@ -160,11 +160,11 @@ def train_cae(trainloader, model, class_name, testloader, y_train, device, args)
             losses_result = losses_result - losses_result.min()
             losses_result = losses_result / (1e-8 + losses_result.max())
             scores = 1 - losses_result
-            auroc_rec = roc_auc_score(y_train, scores)
+            auroc_rec = roc_auc_score(y_test, scores)
 
             _, p = dec_loss_fun(rep, centroid)
             score_p = p[:,0]
-            auroc_dec = roc_auc_score(y_train, score_p)
+            auroc_dec = roc_auc_score(y_test, score_p)
 
             print ("Epoch: [{} | {}], auroc_rec: {:.4f}; auroc_dec: {:.4f}".format(epoch, args.epochs, auroc_rec, auroc_dec))
 
@@ -176,14 +176,14 @@ def train_cae(trainloader, model, class_name, testloader, y_train, device, args)
         start_time = time.time()
 
 
-def train_iae(trainloader, model, class_name, testloader, y_train, device, args):
+def train_iae(trainloader, model, class_name, testloader, y_test, device, args):
     """
     model train function.
     :param trainloader: pytorch dataLoader with train images
     :param model: our model
     :param class_name: name of the class to train
     :param testloader: pytorch dataLoader with test images
-    :param y_train: numpy array, sample normal/abnormal labels, [1 1 1 1 0 0] like, original sample size.
+    :param y_test: numpy array, sample normal/abnormal labels, [1 1 1 1 0 0] like, original sample size.
     :param device: cpu or gpu:0/1/...
     :param args: argumentos entrada programa
     :return:
@@ -295,13 +295,14 @@ def train_iae(trainloader, model, class_name, testloader, y_train, device, args)
             losses_result = losses_result / (1e-8 + losses_result.max())
             scores = 1 - losses_result # normal: label=1, score near 1, loss near 0
             #Compute Area Under the ROC curve from predictions scores
-            print(y_train.shape, scores.shape)
-            auroc_rec = roc_auc_score(y_train, scores)
+            #print("losses_results:", len(losses_result))
+            #print("y_train shape: ", y_test.shape,"scores.shape:", scores.shape)
+            auroc_rec = roc_auc_score(y_test, scores)
 
             # DEC based on reconstruction losses with centroid and representation
             _, p = dec_loss_fun(rep, centroid)
             score_p = p[:, 0]
-            auroc_dec = roc_auc_score(y_train, score_p) # calculate ROC
+            auroc_dec = roc_auc_score(y_test, score_p) # calculate ROC
 
             print ("Epoch: [{} | {}], auroc_rec: {:.4f}; auroc_dec: {:.4f}".format(epoch, args.epochs, auroc_rec, auroc_dec))
 
@@ -435,7 +436,7 @@ def cae(x_train, y_train, class_idx, restore, args):
     res_file_name = '{}_cae_rec-{}_{}_{}.npz'.format(args.dataset, args.ratio, class_name, datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, args.dataset, res_file_name)
     os.makedirs(os.path.join(RESULTS_DIR, args.dataset), exist_ok=True)
-    auc_roc_rec = roc_auc_score(y_train, scores)
+    auc_roc_rec = roc_auc_score(y_test, scores)
     print('testing result: auc_rec: {:.4f}'.format(auc_roc_rec))
     save_roc_pr_curve_data(scores, y_train, res_file_path)
 
@@ -447,7 +448,7 @@ def cae(x_train, y_train, class_idx, restore, args):
     res_file_name = '{}_cae_dec-{}_{}_{}.npz'.format(args.dataset, args.ratio, class_name, datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, args.dataset, res_file_name)
     os.makedirs(os.path.join(RESULTS_DIR, args.dataset), exist_ok=True)
-    auc_roc_dec = roc_auc_score(y_train, score_p)
+    auc_roc_dec = roc_auc_score(y_test, score_p)
     print('testing result: auc_dec: {:.4f}'.format(auc_roc_dec))
     save_roc_pr_curve_data(score_p, y_train, res_file_path)
 
@@ -500,12 +501,15 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     # The Dataset retrieves our dataset’s features and labels one sample at a time,
     #  reshuffle the data at every epoch to reduce model overfitting,
     #   and use Python’s multiprocessing to speed up data retrieval
+    #print(f'DataLoader:')
+    #print(f'xtrain: {type(x_train)},{len(x_train)}, ytrain: {type(y_train)},{len(y_train)}')
+    #print(f'xtest: {type(x_test)},{len(x_test)}, ytest: {type(y_test)},{len(y_test)}')
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, drop_last=True)
     testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False)
 
     # training
     if not restore:
-        train_iae(trainloader, model, class_name, testloader, y_train, device, args) # main.py/train_iae
+        train_iae(trainloader, model, class_name, testloader, y_test, device, args) # main.py/train_iae
         if args.save_model == 1: #save model
             model_file_name = '{}_iae-{}_{}.model.npz'.format(args.dataset, args.ratio, class_name)
             model_path = os.path.join(RESULTS_DIR, args.dataset)
@@ -525,9 +529,9 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     res_file_name = '{}_iae_rec-{}_{}_{}.npz'.format(args.dataset, args.ratio, class_name, datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, args.dataset, res_file_name)
     os.makedirs(os.path.join(RESULTS_DIR, args.dataset), exist_ok=True)
-    auc_roc_rec = roc_auc_score(y_train, scores) # AUC ROC
+    auc_roc_rec = roc_auc_score(y_test, scores) # AUC ROC
     print('testing result: auc_rec: {:.4f}'.format(auc_roc_rec))
-    save_roc_pr_curve_data(scores, y_train, res_file_path)
+    save_roc_pr_curve_data(scores, y_test, res_file_path)
 
     # TODO: NO ENTIENDO, QUE ES DEC ?
     # DEC based on reconstruction losses
@@ -538,9 +542,9 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     res_file_name = '{}_iae_dec-{}_{}_{}.npz'.format(args.dataset, args.ratio, class_name, datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, args.dataset, res_file_name)
     os.makedirs(os.path.join(RESULTS_DIR, args.dataset), exist_ok=True)
-    auc_roc_dec = roc_auc_score(y_train, score_p) #AUC ROC DEC?
+    auc_roc_dec = roc_auc_score(y_test, score_p) #AUC ROC DEC?
     print('testing result: auc_dec: {:.4f}'.format(auc_roc_dec))
-    save_roc_pr_curve_data(score_p, y_train, res_file_path)
+    save_roc_pr_curve_data(score_p, y_test, res_file_path)
 
 
 def main():
