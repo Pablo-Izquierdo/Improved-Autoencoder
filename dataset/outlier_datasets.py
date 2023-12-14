@@ -12,8 +12,8 @@ def _load_data_with_outliers(normal, abnormal, p):
     #Get number of anomaly images. We don´t use all the images that
     # not beyond to the actual computing class of dataset as anomalies. 
     # (else more anomalies that normal data)
-    #num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
-    num_abnormal = int(normal.shape[0])
+    num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
+    #num_abnormal = int(normal.shape[0])
     #Get anomalies images randomly
     selected = np.random.choice(abnormal.shape[0], num_abnormal, replace=False)
 
@@ -24,14 +24,33 @@ def _load_data_with_outliers(normal, abnormal, p):
     labels[:len(normal)] = 1 # From element 0 to len(normal)-1 set to 1
     return data, labels #It is ordered (normal, anomalies)
 
+def _load_data_one_vs_all(data_load_fn, class_ind, p):
+    (x_train, y_train), (x_test, y_test) = data_load_fn() #Contains (X_train, y_train), (X_test, y_test) from specific dataset
+
+    #Concatenate X= [[train],[test]] and Y= [[train],[test]]
+    X = np.concatenate((x_train, x_test), axis=0)
+    Y = np.concatenate((y_train, y_test), axis=0)
+
+    #Get elements of Y that correspond to class index we wanted and the opposite
+    normal = X[Y.flatten() == class_ind] # Flatten: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html
+    abnormal = X[Y.flatten() != class_ind]
+
+    #NOW normal/abnormal have test and train images mixed #TODO: WTF??
+
+    return _load_data_with_outliers(normal, abnormal, p)
+
+############ FIXED #################
+
 def _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, abnormal_test, p):
     #Get number of anomaly images. We don´t use all the images that
     # not beyond to the actual computing class of dataset as anomalies. 
     # (else more anomalies that normal data)
     #num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
     print(type(normal_train))
-    num_abnormal_train = int(normal_train.shape[0])
-    num_abnormal_test = int(normal_test.shape[0])
+    num_abnormal_train = int(normal_train.shape[0]*p/(1-p)) # p=0.5 -> len_normal=len_abnormal
+    num_abnormal_test = int(normal_test.shape[0]*p/(1-p))
+    #num_abnormal_train = int(normal_train.shape[0])
+    #num_abnormal_test = int(normal_test.shape[0])
 
     #Get anomalies images randomly
     selected_train = np.random.choice(abnormal_train.shape[0], num_abnormal_train, replace=True)
@@ -79,25 +98,9 @@ def _load_data_one_vs_all_fixed(data_load_fn, class_ind, p):
     normal_test = x_test[y_test.flatten() == class_ind] # Flatten: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html
     abnormal_test = x_test[y_test.flatten() != class_ind]
 
-    #NOW normal/abnormal have test and train images mixed #TODO: WTF??
-
     return _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, abnormal_test, p)
 
-def _load_data_one_vs_all(data_load_fn, class_ind, p):
-    (x_train, y_train), (x_test, y_test) = data_load_fn() #Contains (X_train, y_train), (X_test, y_test) from specific dataset
-
-    #Concatenate X= [[train],[test]] and Y= [[train],[test]]
-    X = np.concatenate((x_train, x_test), axis=0)
-    Y = np.concatenate((y_train, y_test), axis=0)
-
-    #Get elements of Y that correspond to class index we wanted and the opposite
-    normal = X[Y.flatten() == class_ind] # Flatten: https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html
-    abnormal = X[Y.flatten() != class_ind]
-
-    #NOW normal/abnormal have test and train images mixed #TODO: WTF??
-
-    return _load_data_with_outliers(normal, abnormal, p)
-
+##############################
 
 class OutlierDataset(torch.utils.data.TensorDataset):
 
@@ -121,7 +124,7 @@ def load_wine_with_outliers(class_ind, p):
     return _load_data_one_vs_all_fixed(load_wine, class_ind, p)
 
 def load_mnist_with_outliers(class_ind, p):
-    return _load_data_one_vs_all(load_mnist, class_ind, p)
+    return _load_data_one_vs_all_fixed(load_mnist, class_ind, p)
 
 
 def load_fashion_mnist_with_outliers(class_ind, p):
@@ -194,3 +197,5 @@ def get_channels_axis():
 def normalize_minus1_1(data):
     return 2*(data/255.) - 1
 
+def normalize_0_255(data):
+    return (data + 1)/2 * 255

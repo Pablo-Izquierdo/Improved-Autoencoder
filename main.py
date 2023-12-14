@@ -38,11 +38,14 @@ from utils.utils import (save_roc_pr_curve_data,
                          visualize_tsne_points,
                          denormalize_minus1_1)
 #from utils.mailgun import send_mailgun
+from PIL import Image  as im
+import heapq
 
 matplotlib.use('Agg')
 cudnn.benchmark = True
 HOST = socket.gethostname()
-RESULTS_DIR = '/srv/Improved-Autoencoder/models/rae/_raw/' + datetime.now().strftime('%Y-%m-%d-%H%M%S') + '-' + HOST
+DATETIME = datetime.now().strftime('%Y-%m-%d-%H%M%S')
+RESULTS_DIR = '/srv/Improved-Autoencoder/models/rae/_raw/' + DATETIME + '-' + HOST
 logger = SummaryWriter(RESULTS_DIR)
 
 
@@ -90,6 +93,118 @@ def update_center_c(reps, eps=0.1):
     c[(abs(c) < eps) & (c > 0)] = eps
 
     return c
+
+def save_top_predictions(X_test, y_test, scores):
+    import cv2
+    from dataset.outlier_datasets import normalize_0_255
+    try:
+        os.mkdir(f"./models/results_images")
+    except Exception as e:
+        print("Directory results_images exists")
+    try:
+        os.mkdir(f"./models/results_images/{DATETIME}")
+    except Exception as e:
+        print("Directory results_images/DATATIME exists")
+
+    
+    score_abnormal = []
+    X_abnormal = np.empty((len(X_test),32,32,1), dtype=np.int8)
+    score_normal = []
+    X_normal = np.empty((len(X_test),32,32,1), dtype=np.int8)
+
+    for img, y, s in zip(X_test, y_test, scores):
+        if y==0: #Abnormal
+            score_abnormal.append(s)
+            np.append(X_abnormal,img)
+            print(img)
+        else: #Normal
+            score_normal.append(s)
+            np.append(X_normal,img)
+            print(img)
+        break
+    
+    # best_abnormal = sorted(zip(score_abnormal, X_test), reverse=True)[:3]
+    # best_normal = sorted(zip(score_normal, X_test), reverse=True)[:3]
+    # worst_abnormal = sorted(zip(score_abnormal, X_test), reverse=False)[:3]
+    # worst_normal = sorted(zip(score_normal, X_test), reverse=False)[:3]
+    print(len(score_abnormal), len(X_abnormal))
+    print(len(score_normal), len(X_normal))
+    print(type(X_abnormal), X_abnormal.shape)
+
+    best_abnormal = heapq.nlargest(3,zip(score_abnormal, X_abnormal))
+    best_normal = heapq.nlargest(3,zip(score_normal, X_normal))
+    worst_abnormal = heapq.nsmallest(3,zip(score_abnormal, X_abnormal))
+    worst_normal = heapq.nsmallest(3,zip(score_normal, X_normal))
+
+
+
+    for score, img in best_abnormal:
+        #print(type(e), e.shape)
+        im = normalize_0_255(img)
+        # Display the image
+        cv2.imshow("Image", im)
+
+        # Wait for the user to press a key
+        cv2.waitKey(0)
+
+        # Close all windows
+        cv2.destroyAllWindows()
+        #cv2.imwrite(f"./models/results_images/{DATETIME}/best_abnormal_{score}.png", im)
+        #img = im.fromarray((e*255).astype(np.uint8))
+        #img.save(f"./models/results_images/{DATETIME}/best_abnormal_{score}.jpg")
+        
+    
+    for score, img in best_normal:
+
+        im = normalize_0_255(img)
+        # Display the image
+        cv2.imshow("Image", im)
+        
+        # Wait for the user to press a key
+        cv2.waitKey(0)
+        
+        # Close all windows
+        cv2.destroyAllWindows()
+        #cv2.imwrite(f"./models/results_images/{DATETIME}/best_normal_{score}.png", im)
+        #img = Image.fromarray(e)
+        #img.save(f"./models/results_images/{DATETIME}/best_normal_{score}.jpg")
+
+    for score, img in worst_abnormal:
+
+        im = normalize_0_255(img)
+        # Display the image
+        cv2.imshow("Image", im)
+        
+        # Wait for the user to press a key
+        cv2.waitKey(0)
+        
+        # Close all windows
+        cv2.destroyAllWindows()
+        #cv2.imwrite(f"./models/results_images/{DATETIME}/worst_abnormal_{score}.png", im)
+        #img = Image.fromarray(e)
+        #img.save(f"./models/results_images/{DATETIME}/worst_abnormal_{score}.jpg")
+
+    for score, img in worst_normal:
+        im = normalize_0_255(img)
+        # Display the image
+        cv2.imshow("Image", im)
+        
+        # Wait for the user to press a key
+        cv2.waitKey(0)
+        
+        # Close all windows
+        cv2.destroyAllWindows()
+        #cv2.imwrite(f"./models/results_images/{DATETIME}/worst_normal_{score}.png", im)
+        #img = Image.fromarray(e)
+        #img.save(f"./models/results_images/{DATETIME}/worst_normal_{score}.jpg")
+
+
+
+    
+
+
+
+
 
 
 #########################
@@ -312,7 +427,7 @@ def train_iae(trainloader, model, class_name, testloader, y_test, device, args):
         # initial centroid c before pretrain finished
         # epoch == 20
         if epoch == args.pretrain_epochs:
-            rep, losses_result = test(testloader, model, class_name, args, device, epoch)
+            rep, losses_result = test(testloader, model, class_name, args, device, epoch) #TODO: PORQUE DEL TEST?? 
             #Initialize hypersphere center c as the mean from an initial forward pass on the data.
             c = update_center_c(rep)
 
@@ -533,8 +648,10 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     print('testing result: auc_rec: {:.4f}'.format(auc_roc_rec))
     save_roc_pr_curve_data(scores, y_test, res_file_path)
 
-    # TODO: NO ENTIENDO, QUE ES DEC ?
-    # DEC based on reconstruction losses
+    #TODO: search best/worst predictions ans save images
+    save_top_predictions(x_test, y_test, scores)
+
+    # DEC based on reconstruction losses + hypersphere loss
     centroid = torch.mean(reps, dim=0, keepdim=True)
     _, p = dec_loss_fun(reps, centroid)
     score_p = p[:, 0]
@@ -545,6 +662,9 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     auc_roc_dec = roc_auc_score(y_test, score_p) #AUC ROC DEC?
     print('testing result: auc_dec: {:.4f}'.format(auc_roc_dec))
     save_roc_pr_curve_data(score_p, y_test, res_file_path)
+
+    #TODO: search best/worst predictions ans save images
+    save_top_predictions(x_test, y_test, scores)
 
 
 def main():
