@@ -46,7 +46,7 @@ def _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, ab
     # not beyond to the actual computing class of dataset as anomalies. 
     # (else more anomalies that normal data)
     #num_abnormal = int(normal.shape[0]*p/(1-p)) # Length of normal data * ratio / 1-ratio
-    print(type(normal_train))
+    #print(type(normal_train))
     num_abnormal_train = int(normal_train.shape[0]*p/(1-p)) # p=0.5 -> len_normal=len_abnormal
     num_abnormal_test = int(normal_test.shape[0]*p/(1-p))
     #num_abnormal_train = int(normal_train.shape[0])
@@ -59,7 +59,7 @@ def _load_data_with_outliers_fixed(normal_train, abnormal_train, normal_test, ab
     #Concatenate normal data with anomalies
     x_train = np.concatenate((normal_train, abnormal_train[selected_train]), axis=0)
     x_test = np.concatenate((normal_test, abnormal_test[selected_test]), axis=0)
-    print(type(x_train))
+    #print(type(x_train))
     #Set labels to data 0 -> anomaly / 1 -> normal 
     y_train = np.zeros((x_train.shape[0], ), dtype=np.int32)
     y_train[:len(normal_train)] = 1 # From element 0 to len(normal)-1 set to 1

@@ -40,6 +40,8 @@ from utils.utils import (save_roc_pr_curve_data,
 #from utils.mailgun import send_mailgun
 from PIL import Image  as im
 import heapq
+import cv2
+from dataset.outlier_datasets import normalize_0_255
 
 matplotlib.use('Agg')
 cudnn.benchmark = True
@@ -94,9 +96,8 @@ def update_center_c(reps, eps=0.1):
 
     return c
 
-def save_top_predictions(X_test, y_test, scores):
-    import cv2
-    from dataset.outlier_datasets import normalize_0_255
+def save_top_predictions(X_test, y_test, scores, tipo_prediccion, class_name):
+
     try:
         os.mkdir(f"./models/results_images")
     except Exception as e:
@@ -104,97 +105,83 @@ def save_top_predictions(X_test, y_test, scores):
     try:
         os.mkdir(f"./models/results_images/{DATETIME}")
     except Exception as e:
-        print("Directory results_images/DATATIME exists")
+        print(f"Directory results_images/{DATETIME} exists")
+    try:
+        os.mkdir(f"./models/results_images/{DATETIME}/{tipo_prediccion}/")
+    except Exception as e:
+        print(f"Directory results_images/{DATETIME}/{tipo_prediccion} exists")
+    try:
+        os.mkdir(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}")
+    except Exception as e:
+        print(f"Directory results_images/{DATETIME}/{tipo_prediccion}/{class_name} exists")
+    try:
+        os.mkdir(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/best")
+    except Exception as e:
+        print(f"Directory results_images/{DATETIME}/{tipo_prediccion}/{class_name}/best exists")
+    try:
+        os.mkdir(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst")
+    except Exception as e:
+        print(f"Directory results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst exists")
 
     
     score_abnormal = []
-    X_abnormal = np.empty((len(X_test),32,32,1), dtype=np.int8)
+    X_abnormal = []
     score_normal = []
-    X_normal = np.empty((len(X_test),32,32,1), dtype=np.int8)
+    X_normal = []
 
     for img, y, s in zip(X_test, y_test, scores):
         if y==0: #Abnormal
             score_abnormal.append(s)
-            np.append(X_abnormal,img)
-            print(img)
+            X_abnormal.append(img)
         else: #Normal
             score_normal.append(s)
-            np.append(X_normal,img)
-            print(img)
-        break
+            X_normal.append(img)
+    
+    X_abnormal= np.array(X_abnormal)
+    X_normal= np.array(X_normal)
     
     # best_abnormal = sorted(zip(score_abnormal, X_test), reverse=True)[:3]
     # best_normal = sorted(zip(score_normal, X_test), reverse=True)[:3]
     # worst_abnormal = sorted(zip(score_abnormal, X_test), reverse=False)[:3]
-    # worst_normal = sorted(zip(score_normal, X_test), reverse=False)[:3]
-    print(len(score_abnormal), len(X_abnormal))
-    print(len(score_normal), len(X_normal))
-    print(type(X_abnormal), X_abnormal.shape)
+    #worst_normal = sorted(zip(score_normal, X_test), reverse=False)[:3]
+    #print(len(score_abnormal), len(X_abnormal))
+    #print(len(score_normal), len(X_normal))
+    #print(type(X_abnormal), X_abnormal.shape)
+    #print(type(X_normal), X_normal.shape)
 
-    best_abnormal = heapq.nlargest(3,zip(score_abnormal, X_abnormal))
+    best_abnormal = heapq.nsmallest(3,zip(score_abnormal, X_abnormal))
     best_normal = heapq.nlargest(3,zip(score_normal, X_normal))
-    worst_abnormal = heapq.nsmallest(3,zip(score_abnormal, X_abnormal))
+    worst_abnormal = heapq.nlargest(3,zip(score_abnormal, X_abnormal))
     worst_normal = heapq.nsmallest(3,zip(score_normal, X_normal))
 
 
 
     for score, img in best_abnormal:
-        #print(type(e), e.shape)
         im = normalize_0_255(img)
-        # Display the image
-        cv2.imshow("Image", im)
-
-        # Wait for the user to press a key
-        cv2.waitKey(0)
-
-        # Close all windows
-        cv2.destroyAllWindows()
-        #cv2.imwrite(f"./models/results_images/{DATETIME}/best_abnormal_{score}.png", im)
+        print(f"best_abnormal_{score}.png", im.shape)
+        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/best/abnormal_{round(score,4)}.png", im)
         #img = im.fromarray((e*255).astype(np.uint8))
         #img.save(f"./models/results_images/{DATETIME}/best_abnormal_{score}.jpg")
         
     
     for score, img in best_normal:
-
         im = normalize_0_255(img)
-        # Display the image
-        cv2.imshow("Image", im)
-        
-        # Wait for the user to press a key
-        cv2.waitKey(0)
-        
-        # Close all windows
-        cv2.destroyAllWindows()
-        #cv2.imwrite(f"./models/results_images/{DATETIME}/best_normal_{score}.png", im)
+        print(f"best_normal_{score}.png", im.shape)
+        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/best/normal_{round(score,4)}.png", im)
         #img = Image.fromarray(e)
         #img.save(f"./models/results_images/{DATETIME}/best_normal_{score}.jpg")
 
     for score, img in worst_abnormal:
-
         im = normalize_0_255(img)
-        # Display the image
-        cv2.imshow("Image", im)
-        
-        # Wait for the user to press a key
-        cv2.waitKey(0)
-        
-        # Close all windows
-        cv2.destroyAllWindows()
-        #cv2.imwrite(f"./models/results_images/{DATETIME}/worst_abnormal_{score}.png", im)
+        print(f"worst_abnormal_{score}.png", im.shape)
+        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst/abnormal_{round(score,4)}.png", im)
         #img = Image.fromarray(e)
         #img.save(f"./models/results_images/{DATETIME}/worst_abnormal_{score}.jpg")
 
     for score, img in worst_normal:
         im = normalize_0_255(img)
-        # Display the image
-        cv2.imshow("Image", im)
-        
-        # Wait for the user to press a key
-        cv2.waitKey(0)
-        
-        # Close all windows
-        cv2.destroyAllWindows()
-        #cv2.imwrite(f"./models/results_images/{DATETIME}/worst_normal_{score}.png", im)
+        print(f"worst_abnormal_{score}.png", im.shape)
+        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst/normal_{score}.png", im)
         #img = Image.fromarray(e)
         #img.save(f"./models/results_images/{DATETIME}/worst_normal_{score}.jpg")
 
@@ -635,7 +622,7 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
 
     # testing
     reps, losses = test(testloader, model, class_name, args, device, epoch=-1) # main.py/test
-
+    class_name = get_class_name_from_index(class_idx, args.dataset)
     # AUROC based on reconstruction losses
     losses = losses - losses.min()
     losses = losses / (1e-8 + losses.max())
@@ -649,7 +636,7 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     save_roc_pr_curve_data(scores, y_test, res_file_path)
 
     #TODO: search best/worst predictions ans save images
-    save_top_predictions(x_test, y_test, scores)
+    save_top_predictions(x_test, y_test, scores, "rec", class_name)
 
     # DEC based on reconstruction losses + hypersphere loss
     centroid = torch.mean(reps, dim=0, keepdim=True)
@@ -664,7 +651,7 @@ def iae(x_train, y_train, x_test, y_test, class_idx, restore, args):
     save_roc_pr_curve_data(score_p, y_test, res_file_path)
 
     #TODO: search best/worst predictions ans save images
-    save_top_predictions(x_test, y_test, scores)
+    save_top_predictions(x_test, y_test, scores, "dec", class_name)
 
 
 def main():
