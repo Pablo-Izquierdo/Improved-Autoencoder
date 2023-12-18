@@ -98,6 +98,7 @@ def update_center_c(reps, eps=0.1):
 
 def save_top_predictions(X_test, y_test, scores, tipo_prediccion, class_name):
 
+    # Create directories
     try:
         os.mkdir(f"./models/results_images")
     except Exception as e:
@@ -148,42 +149,46 @@ def save_top_predictions(X_test, y_test, scores, tipo_prediccion, class_name):
     #print(len(score_normal), len(X_normal))
     #print(type(X_abnormal), X_abnormal.shape)
     #print(type(X_normal), X_normal.shape)
+    #     best_normal = heapq.nlargest(3,zip(score_normal, X_normal))
+    #     worst_normal = heapq.nsmallest(3,zip(score_normal, X_normal))
+    #     best_abnormal = heapq.nsmallest(3,zip(score_abnormal, X_abnormal))
+    #     worst_abnormal = heapq.nlargest(3,zip(score_abnormal, X_abnormal))
 
-    best_abnormal = heapq.nsmallest(3,zip(score_abnormal, X_abnormal))
-    best_normal = heapq.nlargest(3,zip(score_normal, X_normal))
-    worst_abnormal = heapq.nlargest(3,zip(score_abnormal, X_abnormal))
-    worst_normal = heapq.nsmallest(3,zip(score_normal, X_normal))
-
-
-
-    for score, img in best_abnormal:
+    ###### ABNORMAL ######
+    best_abnormal_scores = heapq.nsmallest(3,score_abnormal)
+    worst_abnormal_scores = heapq.nlargest(3,score_abnormal)
+    for score in best_abnormal_scores:
+        ind = score_abnormal.index(score)
+        img = X_abnormal[ind]
         im = normalize_0_255(img)
         print(f"best_abnormal_{score}.png", im.shape)
         cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/best/abnormal_{round(score,4)}.png", im)
-        #img = im.fromarray((e*255).astype(np.uint8))
-        #img.save(f"./models/results_images/{DATETIME}/best_abnormal_{score}.jpg")
-        
-    
-    for score, img in best_normal:
-        im = normalize_0_255(img)
-        print(f"best_normal_{score}.png", im.shape)
-        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/best/normal_{round(score,4)}.png", im)
-        #img = Image.fromarray(e)
-        #img.save(f"./models/results_images/{DATETIME}/best_normal_{score}.jpg")
 
-    for score, img in worst_abnormal:
+    for score in worst_abnormal_scores:
+        ind = score_abnormal.index(score)
+        img = X_abnormal[ind]
         im = normalize_0_255(img)
         print(f"worst_abnormal_{score}.png", im.shape)
         cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst/abnormal_{round(score,4)}.png", im)
-        #img = Image.fromarray(e)
-        #img.save(f"./models/results_images/{DATETIME}/worst_abnormal_{score}.jpg")
 
-    for score, img in worst_normal:
+    ###### NORMAL ######
+    best_normal_scores = heapq.nlargest(3,score_normal)
+    worst_normal_scores = heapq.nsmallest(3,score_normal)
+
+    for score in best_normal_scores:
+        ind = score_normal.index(score)
+        img = X_normal[ind]
         im = normalize_0_255(img)
-        print(f"worst_abnormal_{score}.png", im.shape)
-        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst/normal_{score}.png", im)
-        #img = Image.fromarray(e)
-        #img.save(f"./models/results_images/{DATETIME}/worst_normal_{score}.jpg")
+        print(f"best_normal_{score}.png", im.shape)
+        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/best/normal_{round(score,4)}.png", im)
+
+    for score in worst_normal_scores:
+        ind = score_normal.index(score)
+        img = X_normal[ind]
+        im = normalize_0_255(img)
+        print(f"wirst_normal_{score}.png", im.shape)
+        cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst/normal_{round(score,4)}.png", im)
+
 
 
 
