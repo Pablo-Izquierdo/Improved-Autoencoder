@@ -186,7 +186,7 @@ def save_top_predictions(X_test, y_test, scores, tipo_prediccion, class_name):
         ind = score_normal.index(score)
         img = X_normal[ind]
         im = normalize_0_255(img)
-        print(f"wirst_normal_{score}.png", im.shape)
+        print(f"worst_normal_{score}.png", im.shape)
         cv2.imwrite(f"./models/results_images/{DATETIME}/{tipo_prediccion}/{class_name}/worst/normal_{round(score,4)}.png", im)
 
 
